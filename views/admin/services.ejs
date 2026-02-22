@@ -1,0 +1,87 @@
+<%- include('../partials/layout-top', { title }) %>
+<div class="card">
+  <h3 style="margin-top:0;">Add Service</h3>
+  <form method="post" action="/admin/services/add" enctype="multipart/form-data">
+    <div class="form-row">
+      <input class="input" name="serviceId" placeholder="Service Code (e.g. storytv)" required />
+      <input class="input" name="serviceName" placeholder="Service Name" required />
+      <input class="input" name="price" type="number" step="0.01" min="0" inputmode="decimal" placeholder="Price" required />
+      <input class="input" name="country" type="number" step="1" min="0" inputmode="numeric" placeholder="Country Code (e.g. 22)" required />
+      <input class="input" name="maxPrice" type="number" step="0.01" min="0" inputmode="decimal" placeholder="Max Price (optional)" />
+      <input class="input" name="providerIds" placeholder="Provider IDs (comma, optional)" />
+      <input class="input" name="exceptProviderIds" placeholder="Except Provider IDs (comma, optional)" />
+      <input class="input" name="server" placeholder="Server ID" required />
+      <input class="input" name="iconFile" type="file" accept=".png,.jpg,.jpeg,.webp" />
+    </div>
+    <button class="button" type="submit" style="margin-top:12px;">Add Service</button>
+  </form>
+</div>
+
+<div class="card" style="margin-top:16px;">
+  <h3 style="margin-top:0;">Services</h3>
+  <% if (services.length === 0) { %>
+    <p class="muted">No services yet.</p>
+  <% } else { %>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Service</th>
+          <th>Code</th>
+          <th>Price</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% services.forEach(function(s){ %>
+          <tr>
+            <td>
+              <% if (s.icon) { %>
+                <img src="<%= s.icon %>" alt="" style="width:20px;height:20px;object-fit:cover;border-radius:4px;vertical-align:middle;margin-right:6px;" />
+              <% } %>
+              <%= s.serviceName %>
+            </td>
+            <td><%= s.serviceId %></td>
+            <td>&#8377;<%= Number(s.price).toFixed(2) %></td>
+            <td><%= s.isActive ? 'Active' : 'Disabled' %></td>
+            <td>
+              <form method="post" action="/admin/services/toggle/<%= s._id %>" style="display:inline;">
+                <button class="button outline" type="submit"><%= s.isActive ? 'Disable' : 'Enable' %></button>
+              </form>
+              <details style="display:inline-block; margin-left:6px;">
+                <summary class="button outline" style="list-style:none; cursor:pointer;">Edit</summary>
+                <div class="card" style="margin-top:10px; padding:12px; width: 100%; min-width: 320px;">
+                  <form method="post" action="/admin/services/edit/<%= s._id %>" enctype="multipart/form-data">
+                    <div class="form-row">
+                      <input class="input" name="serviceId" value="<%= s.serviceId %>" placeholder="Service Code" required />
+                      <input class="input" name="serviceName" value="<%= s.serviceName %>" placeholder="Service Name" required />
+                      <input class="input" name="price" type="number" step="0.01" min="0" inputmode="decimal" value="<%= s.price %>" placeholder="Price" required />
+                      <input class="input" name="country" type="number" step="1" min="0" inputmode="numeric" value="<%= s.country || 22 %>" placeholder="Country Code" required />
+                      <input class="input" name="maxPrice" type="number" step="0.01" min="0" inputmode="decimal" value="<%= s.maxPrice !== null && s.maxPrice !== undefined ? s.maxPrice : '' %>" placeholder="Max Price (optional)" />
+                      <input class="input" name="providerIds" value="<%= s.providerIds || '' %>" placeholder="Provider IDs (comma, optional)" />
+                      <input class="input" name="exceptProviderIds" value="<%= s.exceptProviderIds || '' %>" placeholder="Except Provider IDs (comma, optional)" />
+                      <input class="input" name="server" value="<%= s.server %>" placeholder="Server ID" required />
+                      <input class="input" name="iconFile" type="file" accept=".png,.jpg,.jpeg,.webp" />
+                    </div>
+                    <% if (s.icon) { %>
+                      <div class="muted" style="margin-top:8px;">
+                        Current icon:
+                        <img src="<%= s.icon %>" alt="" style="width:24px;height:24px;object-fit:cover;border-radius:6px;vertical-align:middle;margin-left:6px;" />
+                      </div>
+                    <% } %>
+                    <button class="button" type="submit" style="margin-top:10px;">Save</button>
+                  </form>
+                </div>
+              </details>
+              <form method="post" action="/admin/services/delete/<%= s._id %>" style="display:inline; margin-left:6px;">
+                <button class="button danger" type="submit">Delete</button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</div>
+<%- include('../partials/layout-bottom') %>
+

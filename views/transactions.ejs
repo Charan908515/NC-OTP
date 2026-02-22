@@ -1,0 +1,32 @@
+<%- include('partials/layout-top', { title }) %>
+<div class="card">
+  <h3 style="margin-top:0;">Transactions</h3>
+  <% if (transactions.length === 0) { %>
+    <p class="muted">No transactions yet.</p>
+  <% } else { %>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Amount</th>
+          <th>Description</th>
+          <th>Status</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% transactions.forEach(function(tx){ %>
+          <tr>
+            <td><span class="badge <%= tx.type %>"><%= tx.type %></span></td>
+            <td>&#8377;<%= Number(tx.amount).toFixed(2) %></td>
+            <td><%= tx.description %></td>
+            <td><%= tx.status %></td>
+            <td><%= tx.createdAt.toLocaleString() %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</div>
+<%- include('partials/layout-bottom') %>
+

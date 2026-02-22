@@ -1,0 +1,67 @@
+<%- include('partials/layout-top', { title }) %>
+<div class="grid grid-2">
+  <div class="card">
+    <h3 style="margin-top:0;">UPI Recharge</h3>
+    <p class="muted">Send payment to the UPI ID below and submit your UTR for approval.</p>
+    <div class="card" style="background:#0f1411; border-color:#223025;">
+      <div class="muted">UPI ID</div>
+      <div class="balance-amount" id="upi-id"><%= upiId %></div>
+      <button class="button outline" data-copy="#upi-id" style="margin-top:10px;">Copy</button>
+    </div>
+    <% if (upiQrUrl) { %>
+      <div class="card" style="margin-top:12px; text-align:center;">
+        <img src="<%= upiQrUrl %>" alt="UPI QR" style="max-width:220px; width:100%; border-radius:12px; border:1px solid var(--border);" />
+        <div class="muted" style="margin-top:8px;">Scan this QR to pay.</div>
+      </div>
+    <% } %>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0;">Submit UTR</h3>
+    <% if (error) { %>
+      <div class="card" style="margin:12px 0; border-color:#3a1414; background:#1a0f0f;"><%= error %></div>
+    <% } %>
+    <% if (success) { %>
+      <div class="card" style="margin:12px 0; border-color:#163a22; background:#0f1a13;"><%= success %></div>
+    <% } %>
+    <form method="post" action="/recharge">
+      <div style="margin:12px 0;">
+        <input class="input" type="number" name="amount" placeholder="Amount (INR)" required />
+      </div>
+      <div style="margin:12px 0;">
+        <input class="input" type="text" name="utrNumber" placeholder="UTR Number" required />
+      </div>
+      <button class="button" type="submit">Submit</button>
+    </form>
+  </div>
+</div>
+
+<div class="card" style="margin-top:16px;">
+  <h3 style="margin-top:0;">Recent Recharge Requests</h3>
+  <% if (recharges.length === 0) { %>
+    <p class="muted">No recharge requests yet.</p>
+  <% } else { %>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Amount</th>
+          <th>UTR</th>
+          <th>Status</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% recharges.forEach(function(r){ %>
+          <tr>
+            <td>&#8377;<%= Number(r.amount).toFixed(2) %></td>
+            <td><%= r.utrNumber %></td>
+            <td><%= r.status %></td>
+            <td><%= r.createdAt.toLocaleString() %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</div>
+
+<%- include('partials/layout-bottom') %>
+

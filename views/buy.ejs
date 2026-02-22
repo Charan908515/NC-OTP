@@ -1,0 +1,215 @@
+<%- include('partials/layout-top', { title }) %>
+<div class="card">
+  <form id="buyForm">
+    <div class="form-row">
+      <div>
+        <label class="muted">Service</label>
+        <input type="hidden" name="serviceId" id="serviceIdInput" required />
+        <div class="service-select" id="serviceSelect">
+          <button class="service-select__trigger" type="button" id="serviceTrigger">
+            <span class="service-select__text">Select service</span>
+            <span class="service-select__chevron">▾</span>
+          </button>
+          <div class="service-select__menu" id="serviceMenu" role="listbox">
+            <% services.forEach(function(s){ %>
+              <button
+                type="button"
+                class="service-select__option"
+                data-value="<%= s._id %>"
+                data-price="<%= s.price %>"
+                data-name="<%= s.serviceName %>"
+                data-icon="<%= s.icon || '' %>"
+              >
+                <span class="service-select__icon">
+                  <% if (s.icon) { %>
+                    <img src="<%= s.icon %>" alt="" />
+                  <% } else { %>
+                    <span class="service-select__icon-fallback">?</span>
+                  <% } %>
+                </span>
+                <span class="service-select__name"><%= s.serviceName %></span>
+                <span class="service-select__price">&#8377;<%= Number(s.price).toFixed(2) %></span>
+              </button>
+            <% }) %>
+          </div>
+        </div>
+      </div>
+      <div>
+        <label class="muted">Price</label>
+        <div class="input" id="priceDisplay">&#8377;0.00</div>
+      </div>
+    </div>
+    <div style="margin-top:12px;">
+      <button class="button" type="submit">Buy Number</button>
+    </div>
+  </form>
+</div>
+
+<div id="result" style="margin-top:16px;"></div>
+
+<script>
+  (function(){
+    const select = document.getElementById('serviceSelect');
+    const priceDisplay = document.getElementById('priceDisplay');
+    const result = document.getElementById('result');
+
+    const serviceIdInput = document.getElementById('serviceIdInput');
+    const trigger = document.getElementById('serviceTrigger');
+    const menu = document.getElementById('serviceMenu');
+
+    function updatePrice(price){
+      priceDisplay.textContent = `\u20B9${Number(price || 0).toFixed(2)}`;
+    }
+
+    trigger.addEventListener('click', () => {
+      menu.classList.toggle('open');
+    });
+
+    menu.querySelectorAll('.service-select__option').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const value = btn.dataset.value;
+        const name = btn.dataset.name || 'Select service';
+        const price = btn.dataset.price || 0;
+        const icon = btn.dataset.icon || '';
+        serviceIdInput.value = value;
+        trigger.innerHTML = `
+          <span class="service-select__icon">
+            ${icon ? `<img src="${icon}" alt="" />` : `<span class="service-select__icon-fallback">?</span>`}
+          </span>
+          <span class="service-select__text">${name}</span>
+          <span class="service-select__chevron">▾</span>
+        `;
+        updatePrice(price);
+        menu.classList.remove('open');
+      });
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!document.getElementById('serviceSelect').contains(e.target)) {
+        menu.classList.remove('open');
+      }
+    });
+
+    document.getElementById('buyForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const serviceId = serviceIdInput.value;
+      if (!serviceId) return;
+      result.innerHTML = '<div class="card">Processing...</div>';
+      try {
+        const res = await fetch('/api/buy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ serviceId })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed');
+
+        result.innerHTML = `
+          <div class="card" data-otp-card data-id="${data.activeNumber._id}" data-expires="${new Date(data.activeNumber.expiresAt).getTime()}">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <div><strong>${data.activeNumber.serviceName}</strong></div>
+                <div class="muted">+${data.activeNumber.number}</div>
+              </div>
+              <div class="countdown" data-countdown>00:00</div>
+            </div>
+            <div style="margin-top:12px;">
+              <div class="muted">OTP</div>
+              <div class="otp" data-otp>Waiting...</div>
+            </div>
+            <div style="margin-top:12px; display:flex; gap:8px;">
+              <button class="button outline" data-copy="#otp-${data.activeNumber._id}" data-copy-btn style="display:none;">Copy</button>
+              <button class="button outline" data-resend style="display:none;">Resend OTP</button>
+              <button class="button danger" data-cancel>Cancel</button>
+            </div>
+            <div id="otp-${data.activeNumber._id}" style="display:none;"></div>
+          </div>
+        `;
+
+        initCard(result.querySelector('[data-otp-card]'));
+      } catch (err) {
+        result.innerHTML = `<div class="card" style="border-color:#3a1414; background:#1a0f0f;">${err.message}</div>`;
+      }
+    });
+
+    function initCard(card){
+      function tick(){
+        const expires = Number(card.dataset.expires || 0);
+        const el = card.querySelector('[data-countdown]');
+        if (!expires || !el) return;
+        const diff = Math.max(0, expires - Date.now());
+        const min = Math.floor(diff / 60000);
+        const sec = Math.floor((diff % 60000) / 1000);
+        el.textContent = `${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+      }
+
+      async function poll(){
+        const id = card.dataset.id;
+        const otpEl = card.querySelector('[data-otp]');
+        const hidden = card.querySelector('#otp-' + id);
+        const cancelBtn = card.querySelector('[data-cancel]');
+        const copyBtn = card.querySelector('[data-copy-btn]');
+        const resendBtn = card.querySelector('[data-resend]');
+        try {
+          const res = await fetch(`/api/otp/${id}`);
+          const data = await res.json();
+          if (data.status === 'received') {
+            otpEl.textContent = data.sms || 'Received';
+            hidden.textContent = data.sms || '';
+            if (cancelBtn) cancelBtn.remove();
+            if (copyBtn) copyBtn.style.display = 'inline-block';
+            if (resendBtn) resendBtn.remove();
+          } else if (data.status === 'cancelled') {
+            otpEl.textContent = 'Cancelled';
+            if (cancelBtn) cancelBtn.remove();
+            if (resendBtn) resendBtn.remove();
+          } else {
+            otpEl.textContent = 'Waiting...';
+            if (resendBtn) resendBtn.style.display = data.canResend ? 'inline-block' : 'none';
+          }
+        } catch (err) {}
+      }
+
+      tick();
+      setInterval(tick, 1000);
+      poll();
+      setInterval(poll, 3000);
+
+      const cancelBtn = card.querySelector('[data-cancel]');
+      const copyBtn = card.querySelector('[data-copy-btn]');
+      const resendBtn = card.querySelector('[data-resend]');
+      if (copyBtn) {
+        copyBtn.addEventListener('click', () => {
+          const target = document.querySelector(copyBtn.dataset.copy);
+          if (!target) return;
+          navigator.clipboard.writeText(target.textContent || '').catch(() => {});
+          copyBtn.textContent = 'Copied';
+          setTimeout(() => (copyBtn.textContent = 'Copy'), 1200);
+        });
+      }
+      if (resendBtn) {
+        resendBtn.addEventListener('click', async () => {
+          resendBtn.disabled = true;
+          const original = resendBtn.textContent;
+          resendBtn.textContent = 'Requesting...';
+          await fetch(`/api/resend/${card.dataset.id}`, { method: 'POST' });
+          resendBtn.textContent = 'Requested';
+          setTimeout(() => {
+            resendBtn.textContent = original;
+            resendBtn.disabled = false;
+          }, 5000);
+        });
+      }
+      if (cancelBtn) {
+        cancelBtn.addEventListener('click', async () => {
+          cancelBtn.disabled = true;
+          await fetch(`/api/cancel/${card.dataset.id}`, { method: 'POST' });
+          poll();
+        });
+      }
+    }
+  })();
+</script>
+
+<%- include('partials/layout-bottom') %>
+

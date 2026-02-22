@@ -1,0 +1,38 @@
+<%- include('partials/auth-top', { title }) %>
+<h1>Create account</h1>
+<p class="muted">Start reselling OTP numbers.</p>
+<% if (error) { %>
+  <div class="card" style="margin:12px 0; border-color:#3a1414; background:#1a0f0f;"> <%= error %> </div>
+<% } %>
+<form method="post" action="/register">
+  <div style="margin:12px 0;">
+    <input class="input" type="text" name="name" placeholder="Full name" required />
+  </div>
+  <div style="margin:12px 0;">
+    <input class="input" type="email" name="email" placeholder="Email" required />
+  </div>
+  <div style="margin:12px 0;">
+    <div class="password-field">
+      <input class="input" type="password" name="password" placeholder="Password" required data-password />
+      <button class="password-toggle" type="button" aria-label="Show password">👁️</button>
+    </div>
+  </div>
+  <button class="button" type="submit" style="width:100%;">Register</button>
+</form>
+<p class="muted" style="margin-top:12px;">Already have an account? <a href="/login">Login</a></p>
+<script>
+  (function(){
+    const wrap = document.querySelector('.password-field');
+    if (!wrap) return;
+    const input = wrap.querySelector('[data-password]');
+    const btn = wrap.querySelector('.password-toggle');
+    if (!input || !btn) return;
+    btn.addEventListener('click', () => {
+      const isHidden = input.type === 'password';
+      input.type = isHidden ? 'text' : 'password';
+      btn.textContent = isHidden ? '🙈' : '👁️';
+      btn.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
+    });
+  })();
+</script>
+<%- include('partials/auth-bottom') %>

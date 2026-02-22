@@ -1,0 +1,59 @@
+<%- include('../partials/layout-top', { title }) %>
+<div class="grid grid-2">
+  <div class="card">
+    <div class="muted">Total Users</div>
+    <div style="font-size:22px; font-weight:600;"><%= totalUsers %></div>
+  </div>
+  <div class="card">
+    <div class="muted">Transactions</div>
+    <div style="font-size:22px; font-weight:600;"><%= transactionsCount %></div>
+  </div>
+  <div class="card">
+    <div class="muted">Pending Recharges</div>
+    <div style="font-size:22px; font-weight:600;"><%= pendingRecharges %></div>
+  </div>
+  <div class="card">
+    <div class="muted">Provider Balance</div>
+    <div style="font-size:22px; font-weight:600;">&#8377;<%= providerBalance %></div>
+  </div>
+</div>
+
+<div class="card" style="margin-top:16px;">
+  <h3 style="margin-top:0;">Admin Shortcuts</h3>
+  <div style="display:flex; gap:10px; flex-wrap:wrap;">
+    <a class="button outline" href="/admin/recharges">Recharges</a>
+    <a class="button outline" href="/admin/services">Services</a>
+    <a class="button outline" href="/admin/users">Users</a>
+  </div>
+</div>
+
+<div class="card" style="margin-top:16px;">
+  <h3 style="margin-top:0;">Recent Users</h3>
+  <% if (recentUsers.length === 0) { %>
+    <p class="muted">No users.</p>
+  <% } else { %>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Balance</th>
+          <th>Joined</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% recentUsers.forEach(function(u){ %>
+          <tr>
+            <td><%= u.name %></td>
+            <td><%= u.email %></td>
+            <td>&#8377;<%= Number(u.balance).toFixed(2) %></td>
+            <td><%= u.createdAt.toLocaleDateString() %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</div>
+
+<%- include('../partials/layout-bottom') %>
+

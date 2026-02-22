@@ -1,0 +1,30 @@
+<%- include('partials/layout-top', { title }) %>
+<div class="card">
+  <h3 style="margin-top:0;">Profile</h3>
+  <div class="grid grid-2">
+    <div>
+      <div class="muted">Name</div>
+      <div><%= user.name %></div>
+    </div>
+    <div>
+      <div class="muted">Email</div>
+      <div><%= user.email %></div>
+    </div>
+    <div>
+      <div class="muted">Balance</div>
+      <div class="balance-amount">&#8377;<%= Number(user.balance).toFixed(2) %></div>
+    </div>
+    <div>
+      <div class="muted">Joined</div>
+      <div><%= user.createdAt.toLocaleDateString() %></div>
+    </div>
+  </div>
+
+  <div style="margin-top:16px;">
+    <div class="muted">API Token</div>
+    <div class="otp" id="api-token"><%= user.token %></div>
+    <button class="button outline" data-copy="#api-token" style="margin-top:10px;">Copy</button>
+  </div>
+</div>
+<%- include('partials/layout-bottom') %>
+

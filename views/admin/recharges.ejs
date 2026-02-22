@@ -1,0 +1,62 @@
+<%- include('../partials/layout-top', { title }) %>
+<div class="card">
+  <h3 style="margin-top:0;">Recharge Requests</h3>
+  <div style="margin:12px 0;">
+    <input class="input" id="rechargeFilter" placeholder="Filter by email or UTR..." />
+  </div>
+  <% if (recharges.length === 0) { %>
+    <p class="muted">No recharge requests.</p>
+  <% } else { %>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>User</th>
+          <th>Amount</th>
+          <th>UTR</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="rechargeBody">
+        <% recharges.forEach(function(r){ const status = String(r.status || '').trim().toLowerCase(); const actionable = status !== 'approved' && status !== 'rejected'; %>
+          <tr data-row>
+            <td data-email><%= r.userId ? r.userId.email : 'Unknown' %></td>
+            <td>&#8377;<%= Number(r.amount).toFixed(2) %></td>
+            <td data-utr><%= r.utrNumber %></td>
+            <td><%= r.status %></td>
+            <td>
+              <% if (actionable) { %>
+                <form method="post" action="/admin/recharges/approve/<%= r._id %>" style="display:inline;">
+                  <button class="button" type="submit">Approve</button>
+                </form>
+                <form method="post" action="/admin/recharges/reject/<%= r._id %>" style="display:inline; margin-left:6px;">
+                  <button class="button danger" type="submit">Reject</button>
+                </form>
+              <% } else { %>
+                <span class="muted">No actions</span>
+              <% } %>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</div>
+
+<script>
+  (function(){
+    const input = document.getElementById('rechargeFilter');
+    const rows = Array.from(document.querySelectorAll('[data-row]'));
+    if (!input) return;
+    input.addEventListener('input', () => {
+      const q = input.value.trim().toLowerCase();
+      rows.forEach((row) => {
+        const email = (row.querySelector('[data-email]')?.textContent || '').toLowerCase();
+        const utr = (row.querySelector('[data-utr]')?.textContent || '').toLowerCase();
+        const show = !q || email.includes(q) || utr.includes(q);
+        row.style.display = show ? '' : 'none';
+      });
+    });
+  })();
+</script>
+<%- include('../partials/layout-bottom') %>
