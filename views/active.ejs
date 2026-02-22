@@ -6,7 +6,7 @@
   <% } else { %>
     <div class="grid">
       <% activeNumbers.forEach(function(item){ %>
-        <div class="card" data-otp-card data-id="<%= item._id %>" data-expires="<%= item.expiresAt.getTime() %>">
+        <div class="card" data-otp-card data-id="<%= item._id %>" data-expires="<%= item.expiresAt.getTime() %>" data-created="<%= item.createdAt.getTime() %>">
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <div>
               <div><strong><%= item.serviceName %></strong></div>
@@ -44,6 +44,22 @@
       el.textContent = `${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
     }
 
+    function tickCancel(card){
+      const createdAt = Number(card.dataset.created || 0);
+      const btn = card.querySelector('[data-cancel]');
+      if (!btn || !createdAt) return;
+      const unlockAt = createdAt + 2 * 60 * 1000;
+      const diff = unlockAt - Date.now();
+      if (diff <= 0) {
+        btn.disabled = false;
+        btn.textContent = 'Cancel';
+        return;
+      }
+      btn.disabled = true;
+      const sec = Math.ceil(diff / 1000);
+      btn.textContent = `Cancel in ${sec}s`;
+    }
+
     async function poll(card){
       const id = card.dataset.id;
       const otpEl = card.querySelector('[data-otp]');
@@ -73,7 +89,9 @@
 
     document.querySelectorAll('[data-otp-card]').forEach((card) => {
       tickCountdown(card);
+      tickCancel(card);
       setInterval(() => tickCountdown(card), 1000);
+      setInterval(() => tickCancel(card), 1000);
       poll(card);
       setInterval(() => poll(card), 3000);
 
@@ -92,12 +110,24 @@
           resendBtn.disabled = true;
           const original = resendBtn.textContent;
           resendBtn.textContent = 'Requesting...';
-          await fetch(`/api/resend/${card.dataset.id}`, { method: 'POST' });
-          resendBtn.textContent = 'Requested';
-          setTimeout(() => {
-            resendBtn.textContent = original;
-            resendBtn.disabled = false;
-          }, 5000);
+          try {
+            const res = await fetch(`/api/resend/${card.dataset.id}`, { method: 'POST' });
+            if (!res.ok) {
+              const data = await res.json().catch(() => ({}));
+              throw new Error(data.error || 'Resend failed');
+            }
+            resendBtn.textContent = 'Requested';
+            setTimeout(() => {
+              resendBtn.textContent = original;
+              resendBtn.disabled = false;
+            }, 5000);
+          } catch (err) {
+            resendBtn.textContent = 'Failed';
+            setTimeout(() => {
+              resendBtn.textContent = original;
+              resendBtn.disabled = false;
+            }, 2000);
+          }
         });
       }
     });

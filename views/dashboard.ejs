@@ -114,12 +114,24 @@
           resendBtn.disabled = true;
           const original = resendBtn.textContent;
           resendBtn.textContent = 'Requesting...';
-          await fetch(`/api/resend/${card.dataset.id}`, { method: 'POST' });
-          resendBtn.textContent = 'Requested';
-          setTimeout(() => {
-            resendBtn.textContent = original;
-            resendBtn.disabled = false;
-          }, 5000);
+          try {
+            const res = await fetch(`/api/resend/${card.dataset.id}`, { method: 'POST' });
+            if (!res.ok) {
+              const data = await res.json().catch(() => ({}));
+              throw new Error(data.error || 'Resend failed');
+            }
+            resendBtn.textContent = 'Requested';
+            setTimeout(() => {
+              resendBtn.textContent = original;
+              resendBtn.disabled = false;
+            }, 5000);
+          } catch (err) {
+            resendBtn.textContent = 'Failed';
+            setTimeout(() => {
+              resendBtn.textContent = original;
+              resendBtn.disabled = false;
+            }, 2000);
+          }
         });
       }
     });

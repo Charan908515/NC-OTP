@@ -10,6 +10,12 @@ const router = express.Router();
 
 const OTP_BASE_URL = 'https://api.grizzlysms.com/stubs/handler_api.php';
 const OTP_API_KEY = process.env.OTP_API_KEY || '';
+const TEST_MODE = (process.env.TEST_MODE || '').toLowerCase() === 'true';
+const TEST_MODE_OTP_DELAY_MS = 60 * 1000;
+
+function isWithinActivationWindow(active) {
+  return Date.now() < new Date(active.expiresAt).getTime();
+}
 
 async function requireAuth(req, res, next) {
   if (!req.session.user) return res.redirect('/login');
@@ -84,7 +90,11 @@ router.get('/dashboard', requireAuth, async (req, res) => {
 
 router.get('/buy', requireAuth, async (req, res) => {
   const services = await Service.find({ isActive: true }).sort({ serviceName: 1 });
-  res.render('buy', { title: 'Buy Number', services });
+  const activeNumbers = await ActiveNumber.find({
+    userId: req.currentUser._id,
+    status: { $in: ['waiting', 'received'] },
+  }).sort({ createdAt: -1 });
+  res.render('buy', { title: 'Buy Number', services, activeNumbers });
 });
 
 router.post('/api/buy', requireAuth, async (req, res) => {
@@ -100,28 +110,37 @@ router.post('/api/buy', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Insufficient balance.' });
     }
 
-    const params = new URLSearchParams({
-      api_key: OTP_API_KEY,
-      action: 'getNumber',
-      service: service.serviceId,
-      country: String(Number.isFinite(service.country) ? service.country : 22)
-    });
-    if (service.maxPrice !== null && service.maxPrice !== undefined && service.maxPrice !== '') {
-      params.set('maxPrice', String(service.maxPrice));
-    }
-    if (service.providerIds) params.set('providerIds', service.providerIds);
-    if (service.exceptProviderIds) params.set('exceptProviderIds', service.exceptProviderIds);
-    const url = `${OTP_BASE_URL}?${params.toString()}`;
-    const providerResp = await axios.get(url);
-    const parsed = parseAccessNumber(providerResp.data);
-    if (!parsed) {
-      return res.status(400).json({ error: 'Provider error. Try again.' });
+    let parsed = null;
+    let testSms = '';
+    if (TEST_MODE) {
+      const randomOrder = String(Date.now());
+      const randomPhone = '999' + String(Math.floor(100000000 + Math.random() * 900000000));
+      parsed = { orderId: randomOrder, phoneNumber: randomPhone };
+      testSms = String(Math.floor(100000 + Math.random() * 900000));
+    } else {
+      const params = new URLSearchParams({
+        api_key: OTP_API_KEY,
+        action: 'getNumber',
+        service: service.serviceId,
+        country: String(Number.isFinite(service.country) ? service.country : 22)
+      });
+      if (service.maxPrice !== null && service.maxPrice !== undefined && service.maxPrice !== '') {
+        params.set('maxPrice', String(service.maxPrice));
+      }
+      if (service.providerIds) params.set('providerIds', service.providerIds);
+      if (service.exceptProviderIds) params.set('exceptProviderIds', service.exceptProviderIds);
+      const url = `${OTP_BASE_URL}?${params.toString()}`;
+      const providerResp = await axios.get(url);
+      parsed = parseAccessNumber(providerResp.data);
+      if (!parsed) {
+        return res.status(400).json({ error: 'Provider error. Try again.' });
+      }
     }
 
     user.balance -= service.price;
     await user.save();
 
-    const expiresAt = new Date(Date.now() + 20 * 60 * 1000);
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
     const activeNumber = await ActiveNumber.create({
       userId: user._id,
       orderId: parsed.orderId,
@@ -131,6 +150,8 @@ router.post('/api/buy', requireAuth, async (req, res) => {
       server: service.server,
       amount: service.price,
       expiresAt,
+      sms: TEST_MODE ? testSms : '',
+      status: 'waiting',
     });
 
     await Transaction.create({
@@ -149,7 +170,8 @@ router.post('/api/buy', requireAuth, async (req, res) => {
         serviceName: activeNumber.serviceName,
         amount: activeNumber.amount,
         status: activeNumber.status,
-        expiresAt: activeNumber.expiresAt
+        expiresAt: activeNumber.expiresAt,
+        createdAt: activeNumber.createdAt
       },
       balance: user.balance,
     });
@@ -166,6 +188,16 @@ router.get('/api/otp/:id', requireAuth, async (req, res) => {
     if (active.status === 'received' || active.status === 'cancelled') {
       return res.json({ status: active.status, sms: active.sms || '' });
     }
+    if (TEST_MODE) {
+      if (active.status === 'waiting') {
+        const readyAt = active.createdAt.getTime() + TEST_MODE_OTP_DELAY_MS;
+        if (Date.now() >= readyAt) {
+          active.status = 'received';
+          await active.save();
+        }
+      }
+      return res.json({ status: active.status, sms: active.sms || '', canResend: false });
+    }
 
     const url = `${OTP_BASE_URL}?api_key=${OTP_API_KEY}&action=getStatus&id=${active.orderId}`;
     const providerResp = await axios.get(url);
@@ -180,7 +212,7 @@ router.get('/api/otp/:id', requireAuth, async (req, res) => {
       await active.save();
     }
 
-    const canResend = parsed.status === 'resend';
+    const canResend = active.status === 'waiting' && isWithinActivationWindow(active);
     return res.json({ status: active.status, sms: active.sms || '', canResend });
   } catch (err) {
     console.error(err);
@@ -194,6 +226,12 @@ router.post('/api/resend/:id', requireAuth, async (req, res) => {
     if (!active) return res.status(404).json({ error: 'Not found' });
     if (active.status !== 'waiting') {
       return res.status(400).json({ error: 'Cannot resend.' });
+    }
+    if (!isWithinActivationWindow(active)) {
+      return res.status(400).json({ error: 'Activation expired.' });
+    }
+    if (TEST_MODE) {
+      return res.json({ success: true });
     }
 
     let statusToSend = 3;
@@ -220,6 +258,25 @@ router.post('/api/cancel/:id', requireAuth, async (req, res) => {
     if (!active) return res.status(404).json({ error: 'Not found' });
     if (active.status !== 'waiting') {
       return res.status(400).json({ error: 'Cannot cancel.' });
+    }
+    if (TEST_MODE) {
+      active.status = 'cancelled';
+      await active.save();
+      const user = await User.findById(req.currentUser._id);
+      user.balance += active.amount;
+      await user.save();
+      await Transaction.create({
+        userId: user._id,
+        type: 'credit',
+        amount: active.amount,
+        description: `Refund ${active.serviceName}`,
+        status: 'completed',
+      });
+      return res.json({ success: true, balance: user.balance });
+    }
+    const lockUntil = new Date(active.createdAt.getTime() + 2 * 60 * 1000);
+    if (Date.now() < lockUntil.getTime()) {
+      return res.status(400).json({ error: 'Cancel available after 2 minutes.' });
     }
 
     const url = `${OTP_BASE_URL}?api_key=${OTP_API_KEY}&action=setStatus&id=${active.orderId}&status=8`;

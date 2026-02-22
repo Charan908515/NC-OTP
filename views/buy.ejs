@@ -47,6 +47,39 @@
 
 <div id="result" style="margin-top:16px;"></div>
 
+<div style="margin-top:16px;">
+  <% if (activeNumbers && activeNumbers.length) { %>
+    <div class="card">
+      <h3 style="margin-top:0;">Your Active Numbers</h3>
+      <div class="grid">
+        <% activeNumbers.forEach(function(item){ %>
+          <div class="card" data-otp-card data-id="<%= item._id %>" data-expires="<%= item.expiresAt.getTime() %>" data-created="<%= item.createdAt.getTime() %>">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <div><strong><%= item.serviceName %></strong></div>
+                <div class="muted">+<%= item.number %></div>
+              </div>
+              <div class="countdown" data-countdown>00:00</div>
+            </div>
+            <div style="margin-top:12px;">
+              <div class="muted">OTP</div>
+              <div class="otp" data-otp><%= item.status === 'received' ? (item.sms || 'Received') : 'Waiting...' %></div>
+            </div>
+            <div style="margin-top:12px; display:flex; gap:8px;">
+              <button class="button outline" data-copy="#otp-<%= item._id %>" data-copy-btn style="<%= item.status === 'received' ? '' : 'display:none;' %>">Copy</button>
+              <button class="button outline" data-resend style="display:none;">Resend OTP</button>
+              <% if (item.status === 'waiting') { %>
+                <button class="button danger" data-cancel>Cancel</button>
+              <% } %>
+            </div>
+            <div id="otp-<%= item._id %>" style="display:none;"><%= item.sms || '' %></div>
+          </div>
+        <% }) %>
+      </div>
+    </div>
+  <% } %>
+</div>
+
 <script>
   (function(){
     const select = document.getElementById('serviceSelect');
@@ -105,7 +138,7 @@
         if (!res.ok) throw new Error(data.error || 'Failed');
 
         result.innerHTML = `
-          <div class="card" data-otp-card data-id="${data.activeNumber._id}" data-expires="${new Date(data.activeNumber.expiresAt).getTime()}">
+          <div class="card" data-otp-card data-id="${data.activeNumber._id}" data-expires="${new Date(data.activeNumber.expiresAt).getTime()}" data-created="${new Date(data.activeNumber.createdAt).getTime()}">
             <div style="display:flex; justify-content:space-between; align-items:center;">
               <div>
                 <div><strong>${data.activeNumber.serviceName}</strong></div>
@@ -170,8 +203,26 @@
         } catch (err) {}
       }
 
+      function tickCancel(){
+        const createdAt = Number(card.dataset.created || 0);
+        const btn = card.querySelector('[data-cancel]');
+        if (!btn || !createdAt) return;
+        const unlockAt = createdAt + 2 * 60 * 1000;
+        const diff = unlockAt - Date.now();
+        if (diff <= 0) {
+          btn.disabled = false;
+          btn.textContent = 'Cancel';
+          return;
+        }
+        btn.disabled = true;
+        const sec = Math.ceil(diff / 1000);
+        btn.textContent = `Cancel in ${sec}s`;
+      }
+
       tick();
+      tickCancel();
       setInterval(tick, 1000);
+      setInterval(tickCancel, 1000);
       poll();
       setInterval(poll, 3000);
 
@@ -192,12 +243,24 @@
           resendBtn.disabled = true;
           const original = resendBtn.textContent;
           resendBtn.textContent = 'Requesting...';
-          await fetch(`/api/resend/${card.dataset.id}`, { method: 'POST' });
-          resendBtn.textContent = 'Requested';
-          setTimeout(() => {
-            resendBtn.textContent = original;
-            resendBtn.disabled = false;
-          }, 5000);
+          try {
+            const res = await fetch(`/api/resend/${card.dataset.id}`, { method: 'POST' });
+            if (!res.ok) {
+              const data = await res.json().catch(() => ({}));
+              throw new Error(data.error || 'Resend failed');
+            }
+            resendBtn.textContent = 'Requested';
+            setTimeout(() => {
+              resendBtn.textContent = original;
+              resendBtn.disabled = false;
+            }, 5000);
+          } catch (err) {
+            resendBtn.textContent = 'Failed';
+            setTimeout(() => {
+              resendBtn.textContent = original;
+              resendBtn.disabled = false;
+            }, 2000);
+          }
         });
       }
       if (cancelBtn) {
@@ -208,6 +271,10 @@
         });
       }
     }
+
+    document.querySelectorAll('[data-otp-card]').forEach((card) => {
+      initCard(card);
+    });
   })();
 </script>
 
