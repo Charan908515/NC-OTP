@@ -382,6 +382,28 @@ a {
   padding: 24px;
 }
 
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.auth-logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.auth-name {
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  font-size: 18px;
+}
+
 .auth-card h1 {
   margin: 0 0 16px;
 }
