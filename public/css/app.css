@@ -177,6 +177,56 @@ a {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
+.dashboard-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px;
+}
+
+.dashboard-hero__text h2 {
+  margin: 0 0 6px;
+  font-size: 24px;
+}
+
+.dashboard-hero__text .accent {
+  color: var(--primary);
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+}
+
+.stat-card {
+  display: grid;
+  gap: 8px;
+}
+
+.stat-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 107, 53, 0.12);
+  border: 1px solid rgba(255, 107, 53, 0.25);
+  font-size: 18px;
+}
+
+.stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  font-family: var(--mono);
+}
+
+.stat-label {
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;

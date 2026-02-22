@@ -1,80 +1,61 @@
 <%- include('partials/layout-top', { title }) %>
-<div class="grid grid-2">
-  <div class="card">
-    <div class="muted">Balance</div>
-    <div class="balance-amount" data-balance>&#8377;0.00</div>
-  </div>
-  <div class="card">
-    <div class="muted">Active Numbers</div>
-    <div style="font-size:22px; font-weight:600;"><%= activeNumbers.length %></div>
+<div class="dashboard-hero card">
+  <div class="dashboard-hero__text">
+    <h2>Welcome, <span class="accent"><%= user ? user.name : 'User' %></span>!</h2>
+    <p class="muted">Manage your OTP services easily.</p>
+    <a class="button" href="/buy">Buy New Number</a>
   </div>
 </div>
 
-<div style="margin-top:20px;" class="grid">
-  <div class="card">
-    <h3 style="margin-top:0;">Active Numbers</h3>
-    <% if (activeNumbers.length === 0) { %>
-      <p class="muted">No active numbers yet.</p>
-    <% } else { %>
-      <div class="grid">
-        <% activeNumbers.forEach(function(item){ %>
-          <div class="card" data-otp-card data-id="<%= item._id %>" data-expires="<%= item.expiresAt.getTime() %>">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <div>
-                <div><strong><%= item.serviceName %></strong></div>
-                <div class="muted">+<%= item.number %></div>
-              </div>
-              <div class="countdown" data-countdown>00:00</div>
-            </div>
-            <div style="margin-top:12px;">
-              <div class="muted">OTP</div>
-              <div class="otp" data-otp>Waiting...</div>
-            </div>
-            <div style="margin-top:12px; display:flex; gap:8px;">
-              <button class="button outline" data-copy="#otp-<%= item._id %>" data-copy-btn style="<%= item.status === 'received' ? '' : 'display:none;' %>">Copy</button>
-              <button class="button outline" data-resend style="display:none;">Resend OTP</button>
-              <% if (item.status === 'waiting') { %>
-                <button class="button danger" data-cancel>Cancel</button>
-              <% } %>
-            </div>
-            <div id="otp-<%= item._id %>" style="display:none;"><%= item.sms || '' %></div>
-          </div>
-        <% }) %>
-      </div>
-    <% } %>
+<div class="stat-grid" style="margin-top:16px;">
+  <div class="stat-card card">
+    <div class="stat-icon">💳</div>
+    <div class="stat-value" data-balance>&#8377;<%= Number(user ? user.balance || 0 : 0).toFixed(2) %></div>
+    <div class="stat-label">Balance</div>
   </div>
+  <div class="stat-card card">
+    <div class="stat-icon">➕</div>
+    <div class="stat-value">&#8377;<%= Number(typeof totalRecharge !== 'undefined' ? totalRecharge : 0).toFixed(2) %></div>
+    <div class="stat-label">Total Recharge</div>
+  </div>
+  <div class="stat-card card">
+    <div class="stat-icon">📱</div>
+    <div class="stat-value"><%= typeof totalNumbers !== 'undefined' ? totalNumbers : 0 %></div>
+    <div class="stat-label">Numbers</div>
+  </div>
+</div>
 
-  <div class="card">
-    <h3 style="margin-top:0;">Recent Transactions</h3>
-    <% if (transactions.length === 0) { %>
-      <p class="muted">No transactions yet.</p>
-    <% } else { %>
-      <table class="table">
-        <thead>
+<div class="card" style="margin-top:20px;">
+  <h3 style="margin-top:0;">Recent Transactions</h3>
+  <% if (transactions.length === 0) { %>
+    <p class="muted">No transactions found.</p>
+  <% } else { %>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Amount</th>
+          <th>Description</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% transactions.forEach(function(tx){ %>
           <tr>
-            <th>Type</th>
-            <th>Amount</th>
-            <th>Description</th>
-            <th>Date</th>
+            <td><span class="badge <%= tx.type %>"><%= tx.type %></span></td>
+            <td>&#8377;<%= Number(tx.amount).toFixed(2) %></td>
+            <td><%= tx.description %></td>
+            <td><%= tx.createdAt.toLocaleString() %></td>
           </tr>
-        </thead>
-        <tbody>
-          <% transactions.forEach(function(tx){ %>
-            <tr>
-              <td><span class="badge <%= tx.type %>"><%= tx.type %></span></td>
-              <td>&#8377;<%= Number(tx.amount).toFixed(2) %></td>
-              <td><%= tx.description %></td>
-              <td><%= tx.createdAt.toLocaleString() %></td>
-            </tr>
-          <% }) %>
-        </tbody>
-      </table>
-    <% } %>
-  </div>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
 </div>
 
 <script>
   (function(){
+    if (!document.querySelector('[data-otp-card]')) return;
     function tickCountdown(card){
       const expires = Number(card.dataset.expires || 0);
       const el = card.querySelector('[data-countdown]');

@@ -1,69 +1,72 @@
 <%- include('head', { title }) %>
-<div class="page">
-  <aside class="sidebar">
-    <div class="brand">
-      <img class="brand-logo" src="/img/logo.jpg" alt="NC OTP logo" />
-      <span>NC OTP</span>
-    </div>
-    <nav class="nav">
-      <a href="/dashboard" class="<%= title === 'Dashboard' ? 'active' : '' %>">Dashboard</a>
-      <a href="/buy" class="<%= title === 'Buy Number' ? 'active' : '' %>">Buy Number</a>
-      <a href="/recharge" class="<%= title === 'Recharge' ? 'active' : '' %>">Topup / Recharge</a>
-      <a href="/active" class="<%= title === 'Active Numbers' ? 'active' : '' %>">OTP History</a>
-      <% if (user && user.isAdmin) { %>
-        <div class="nav-section">Admin</div>
-        <a href="/admin" class="<%= title.startsWith('Admin') ? 'active' : '' %>">Admin Panel</a>
-        <a href="/admin/recharges" class="<%= title === 'Recharges' ? 'active' : '' %>">Admin Recharges</a>
-        <a href="/admin/services" class="<%= title === 'Services' ? 'active' : '' %>">Admin Services</a>
-        <a href="/admin/users" class="<%= title === 'Users' ? 'active' : '' %>">Admin Users</a>
-      <% } %>
-      <a href="/logout">Logout</a>
-    </nav>
-    <div class="sidebar-balance">
-      <div class="muted">Balance</div>
-      <div class="balance-amount" data-balance>&#8377;<%= user ? Number(user.balance || 0).toFixed(2) : '0.00' %></div>
-    </div>
-  </aside>
-  <main class="main">
-    <div class="topbar">
-      <button class="sidebar-toggle" type="button" aria-label="Toggle menu">Menu</button>
-      <h1><%= title %></h1>
-      <div class="topbar-actions">
-        <div class="topbar-balance">
-          <span class="muted">Balance</span>
-          <span class="balance-amount" data-balance>&#8377;<%= user ? Number(user.balance || 0).toFixed(2) : '0.00' %></span>
-        </div>
-        <a class="button outline" href="/recharge">Recharge</a>
-        <button class="button outline theme-toggle" type="button">Light</button>
+  <div class="page">
+    <aside class="sidebar">
+      <div class="brand">
+        <img class="brand-logo" src="/img/logo.png" alt="NC OTP logo" />
+        <span>NC OTP</span>
       </div>
-    </div>
+      <nav class="nav">
+        <a href="/dashboard" class="<%= title === 'Dashboard' ? 'active' : '' %>">Dashboard</a>
+        <a href="/buy" class="<%= title === 'Buy Number' ? 'active' : '' %>">Buy Number</a>
+        <a href="/recharge" class="<%= title === 'Recharge' ? 'active' : '' %>">Topup / Recharge</a>
+        <a href="/active" class="<%= title === 'Active Numbers' ? 'active' : '' %>">OTP History</a>
+        <% if (user && user.isAdmin) { %>
+          <div class="nav-section">Admin</div>
+          <a href="/admin" class="<%= title.startsWith('Admin') ? 'active' : '' %>">Admin Panel</a>
+          <a href="/admin/recharges" class="<%= title === 'Recharges' ? 'active' : '' %>">Admin Recharges</a>
+          <a href="/admin/services" class="<%= title === 'Services' ? 'active' : '' %>">Admin Services</a>
+          <a href="/admin/users" class="<%= title === 'Users' ? 'active' : '' %>">Admin Users</a>
+          <% } %>
+            <a href="/logout">Logout</a>
+      </nav>
+      <div class="sidebar-balance">
+        <div class="muted">Balance</div>
+        <div class="balance-amount" data-balance>&#8377;<%= user ? Number(user.balance || 0).toFixed(2) : '0.00' %>
+        </div>
+      </div>
+    </aside>
+    <main class="main">
+      <div class="topbar">
+        <button class="sidebar-toggle" type="button" aria-label="Toggle menu">Menu</button>
+        <h1>
+          <%= title %>
+        </h1>
+        <div class="topbar-actions">
+          <div class="topbar-balance">
+            <span class="muted">Balance</span>
+            <span class="balance-amount" data-balance>&#8377;<%= user ? Number(user.balance || 0).toFixed(2) : '0.00' %>
+                </span>
+          </div>
+          <a class="button outline" href="/recharge">Recharge</a>
+          <button class="button outline theme-toggle" type="button">Light</button>
+        </div>
+      </div>
 
-    <script>
-      (function(){
-        const btn = document.querySelector('.sidebar-toggle');
-        const sidebar = document.querySelector('.sidebar');
-        if (!btn || !sidebar) return;
-        btn.addEventListener('click', () => {
-          sidebar.classList.toggle('open');
-        });
-      })();
-    </script>
+      <script>
+        (function () {
+          const btn = document.querySelector('.sidebar-toggle');
+          const sidebar = document.querySelector('.sidebar');
+          if (!btn || !sidebar) return;
+          btn.addEventListener('click', () => {
+            sidebar.classList.toggle('open');
+          });
+        })();
+      </script>
 
-    <script>
-      (function(){
-        const btn = document.querySelector('.theme-toggle');
-        if (!btn) return;
-        function applyTheme(theme) {
-          document.documentElement.setAttribute('data-theme', theme);
-          btn.textContent = theme === 'light' ? 'Dark' : 'Light';
-        }
-        const saved = localStorage.getItem('theme') || 'dark';
-        applyTheme(saved);
-        btn.addEventListener('click', () => {
-          const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
-          localStorage.setItem('theme', next);
-          applyTheme(next);
-        });
-      })();
-    </script>
-
+      <script>
+        (function () {
+          const btn = document.querySelector('.theme-toggle');
+          if (!btn) return;
+          function applyTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            btn.textContent = theme === 'light' ? 'Dark' : 'Light';
+          }
+          const saved = localStorage.getItem('theme') || 'dark';
+          applyTheme(saved);
+          btn.addEventListener('click', () => {
+            const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            localStorage.setItem('theme', next);
+            applyTheme(next);
+          });
+        })();
+      </script>

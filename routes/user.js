@@ -66,10 +66,19 @@ router.get('/dashboard', requireAuth, async (req, res) => {
     .sort({ createdAt: -1 })
     .limit(5);
 
+  const totalRechargeAgg = await Recharge.aggregate([
+    { $match: { userId, status: 'approved' } },
+    { $group: { _id: null, total: { $sum: '$amount' } } },
+  ]);
+  const totalRecharge = totalRechargeAgg.length ? totalRechargeAgg[0].total : 0;
+  const totalNumbers = await ActiveNumber.countDocuments({ userId });
+
   res.render('dashboard', {
     title: 'Dashboard',
     activeNumbers,
     transactions,
+    totalRecharge,
+    totalNumbers,
   });
 });
 
