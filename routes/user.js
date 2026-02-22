@@ -17,6 +17,35 @@ function isWithinActivationWindow(active) {
   return Date.now() < new Date(active.expiresAt).getTime();
 }
 
+async function autoCancelExpiredActivation(active) {
+  if (!active || active.status !== 'waiting' || isWithinActivationWindow(active)) return false;
+
+  if (!TEST_MODE) {
+    try {
+      const url = `${OTP_BASE_URL}?api_key=${OTP_API_KEY}&action=setStatus&id=${active.orderId}&status=8`;
+      await axios.get(url);
+    } catch (err) {}
+  }
+
+  const updated = await ActiveNumber.updateOne(
+    { _id: active._id, status: 'waiting' },
+    { $set: { status: 'cancelled' } }
+  );
+  if (!updated.modifiedCount) return false;
+
+  await User.updateOne({ _id: active.userId }, { $inc: { balance: active.amount } });
+  await Transaction.create({
+    userId: active.userId,
+    type: 'credit',
+    amount: active.amount,
+    description: `Refund ${active.serviceName}`,
+    status: 'completed',
+  });
+
+  active.status = 'cancelled';
+  return true;
+}
+
 async function requireAuth(req, res, next) {
   if (!req.session.user) return res.redirect('/login');
   const user = await User.findById(req.session.user.id);
@@ -185,6 +214,10 @@ router.get('/api/otp/:id', requireAuth, async (req, res) => {
   try {
     const active = await ActiveNumber.findOne({ _id: req.params.id, userId: req.currentUser._id });
     if (!active) return res.status(404).json({ error: 'Not found' });
+    if (active.status === 'waiting' && !isWithinActivationWindow(active)) {
+      await autoCancelExpiredActivation(active);
+      return res.json({ status: 'cancelled', sms: '', canResend: false });
+    }
     if (active.status === 'received' || active.status === 'cancelled') {
       return res.json({ status: active.status, sms: active.sms || '' });
     }
@@ -228,6 +261,7 @@ router.post('/api/resend/:id', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Cannot resend.' });
     }
     if (!isWithinActivationWindow(active)) {
+      await autoCancelExpiredActivation(active);
       return res.status(400).json({ error: 'Activation expired.' });
     }
     if (TEST_MODE) {
